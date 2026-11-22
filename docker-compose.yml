@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: validade-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - validade-network
+    # MongoDB NÃO é exposto no host — apenas comunicação interna via rede Docker
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: validade-api
+    restart: always
+    depends_on:
+      - mongo
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: ${MONGODB_URI}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      # Adicione outras variáveis de ambiente conforme necessário
+    networks:
+      - validade-network
+
+volumes:
+  mongodata:
+
+networks:
+  validade-network:
+    name: monitor-validade_default
+    driver: bridge

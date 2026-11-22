@@ -39,3 +39,17 @@ const startServer = async () => {
 };
 
 startServer();
+
+//git push vps HEAD:main
+
+// # 1. Adiciona tudo
+// git add .
+
+// # 2. Comita
+// git commit -m "feat: sua mudança aqui"
+
+// # 3. Manda para o repo antigo, na sua branch atual, como backup
+// git push origin feat/camada-1-2-lifecycle
+
+// # 4. Manda para a VPS, como main, para deploy
+// git push vps HEAD:main
