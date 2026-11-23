@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { StatusValidade } from './status.type.js';
 
 /**
  * Grupo 1 — Dados da data componentizada disponibilizados pelo frontend.
@@ -59,7 +60,7 @@ export interface IValidadeCreationPayload
 export interface IValidadeUpdatePayload
   extends Partial<Omit<IValidade, '_id' | 'criadoEm' | 'atualizadoEm'>> { }
 
-export type StatusValidade = 'espera' | 'alerta' | 'vencido' | 'encerrado';
+
 
 export interface AlterarValidadeBody {
   data?: IDataValidade;

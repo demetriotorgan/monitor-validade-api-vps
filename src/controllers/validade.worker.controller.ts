@@ -2,16 +2,24 @@ import { NextFunction, Request, Response } from "express";
 import { buscarAlertasPendentes } from "../validade-lifecycle/orquestrador/camada3-alertas.js";
 import { isValidObjectId } from "mongoose";
 import { ValidadeModel } from "../models/Validade.js";
+import { ResultadoListaAlertas } from "../types/status.type.js";
+import { AppError } from "../erros/app-error.js";
+import { calcularStatusValidade } from "../validade-lifecycle/calculo/calculo.js";
+import { confirmarEnvioAlertaService } from "../services/validade.worker.service.js";
 
-// Controller fino: só chama Camada 03, não decide, não filtra no banco.
+//Controller fino: só chama Camada 3, não decide, não filtra no banco.
+// A decisão de quem é alerta está toda em camada3-alertas.ts
 export async function listarAlertasPendentes(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const { pendentes, data_referencia, quantidade } = await buscarAlertasPendentes();
+    const { pendentes, data_referencia, quantidade }: ResultadoListaAlertas =
+      await buscarAlertasPendentes();
 
+    // Boletim vazio não é erro.
+    // O worker vai decidir se envia "Nenhuma prioridade hoje" ou nem envia.
     res.status(200).json({
       sucesso: true,
       dados: pendentes,
@@ -19,57 +27,39 @@ export async function listarAlertasPendentes(
       quantidade,
     });
   } catch (erro) {
-    console.error('Erro ao listar alertas pendentes:', erro);
-    next(erro);
-  }
-};
+    if (erro instanceof AppError) {
+      next(erro);
+      return;
+    }
 
-export async function confirmarEnvioAlerta(req: Request, res: Response): Promise<void> {
+    next(
+      new AppError(
+        'Erro interno ao listar alertas pendentes.',
+        500,
+        'ERRO_LISTAR_ALERTAS'
+      )
+    );
+  }
+}
+
+export async function confirmarEnvioAlerta(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
 
-    if (!isValidObjectId(id)) {
-      res.status(400).json({
-        sucesso: false,
-        mensagem: 'ID da validade inválido.',
-      });
-      return;
+    // Express 5 pode vir como array se a rota tiver /:id/:id
+    // Se vier array, é erro de rota, não de dado
+    if (Array.isArray(id)) {
+      throw new AppError('ID da validade inválido.', 400, 'ID_INVALIDO');
     }
 
-    const validade = await ValidadeModel.findById(id).lean();
-
-    if (!validade) {
-      res.status(404).json({
-        sucesso: false,
-        mensagem: 'Registro de validade não encontrado.',
-      });
-      return;
-    }
-
-    if (validade.validade !== 'alerta') {
-      res.status(400).json({
-        sucesso: false,
-        mensagem: `Não é possível confirmar envio de alerta para uma validade com status "${validade.validade}". Apenas validades em "alerta" podem receber confirmação de envio.`,
-      });
-      return;
-    }
-
-    const atualizado = await ValidadeModel.findByIdAndUpdate(
-      id,
-      { 'alerta.ultimo_envio_em': new Date() },
-      { new: true, runValidators: true }
-    );
-
+    const atualizado = await confirmarEnvioAlertaService(id);
     res.status(200).json({
       sucesso: true,
       mensagem: 'Envio de alerta confirmado.',
       dados: atualizado,
     });
   } catch (erro) {
-    console.error('Erro ao confirmar envio de alerta:', erro);
-    res.status(500).json({
-      sucesso: false,
-      mensagem: 'Erro interno ao confirmar envio de alerta.',
-    });
+    if (erro instanceof AppError) return next(erro);
+    next(new AppError('Erro interno ao confirmar envio de alerta.', 500, 'ERRO_CONFIRMAR_ENVIO'));
   }
 }

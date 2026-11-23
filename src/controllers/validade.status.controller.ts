@@ -2,13 +2,15 @@ import { NextFunction, Request, Response } from 'express';
 import { parseISO, differenceInCalendarDays } from 'date-fns';
 
 import { ValidadeModel } from '../models/Validade.js';
-import { IValidade, StatusValidade } from '../types/validade.types.js';
-import { formatarValidadeComStatus, obterHojeBrasilia } from '../utils/validade.utils.js';
+import { IValidade } from '../types/validade.types.js';
+
 
 import { AppError } from '../erros/app-error.js';
+import { StatusValidade } from '../types/status.type.js';
+import { obterHojeBrasilia } from '../validade-lifecycle/tempo/tempo.js';
+import { formatarValidadeComStatus } from '../utils/validade.utils.js';
 
 
-const TIMEZONE = 'America/Sao_Paulo';
 /**
  * Lista os registros de validade com seus status.
  *

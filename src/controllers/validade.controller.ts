@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import { ValidadeModel } from '../models/Validade.js';
-import { IValidade, IValidadeUpdatePayload } from '../types/validade.types.js';
+import { IValidade } from '../types/validade.types.js';
 import mongoose, { isValidObjectId } from 'mongoose';
-import { formatarValidadeComStatus  } from '../utils/validade.utils.js';
+
 import { AppError, ErroEdicao } from '../erros/app-error.js';
 import { ProdutoModel } from '../models/Produto.js';
 import { podeCriar } from '../validade-lifecycle/orquestrador/camada1-criacao.js';
@@ -11,9 +11,7 @@ import { podeEncerrar } from '../validade-lifecycle/orquestrador/camada2-encerra
 import { podeCorrigir } from '../validade-lifecycle/orquestrador/camada2-correcao.js';
 import { podeDeletar } from '../validade-lifecycle/orquestrador/camada2-deletar.js';
 import { EntradaCorrecao } from '../types/lifecycle.type.js';
-
-
-interface AlterarValidadeBody extends IValidadeUpdatePayload { }
+import { formatarValidadeComStatus } from '../utils/validade.utils.js';
 
 
 export async function salvarValidade(req: Request, res: Response, next: NextFunction): Promise<void> {

@@ -1,20 +1,21 @@
 // utils/validade.utils.ts
 import { parseISO, startOfDay, isBefore, isEqual, differenceInCalendarDays, subDays, isAfter } from 'date-fns';
-import { IValidade, IValidadeComStatus, StatusValidade } from '../types/validade.types.js';
+import { IValidade, IValidadeComStatus} from '../types/validade.types.js';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
+import { TIMEZONE_BRASILIA } from '../validade-lifecycle/tempo/tempo.js';
+import { StatusValidade } from '../types/status.type.js';
 
 /**
  * Calcula o status inicial de uma validade com base na data de vencimento
  * e nos dias de antecedência configurados no alerta.
  */
 
-const TIMEZONE_BRASIL = 'America/Sao_Paulo';
 
 // ÚNICA fonte de "hoje" - todo mundo usa essa
 export function obterHojeBrasilia(): Date {
   const agoraUtc = new Date();
-  const hojeBrasilia = toZonedTime(agoraUtc, TIMEZONE_BRASIL);
+  const hojeBrasilia = toZonedTime(agoraUtc, TIMEZONE_BRASILIA);
   return startOfDay(hojeBrasilia);
 }
 

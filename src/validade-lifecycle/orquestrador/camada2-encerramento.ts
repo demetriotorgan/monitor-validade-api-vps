@@ -6,9 +6,9 @@
 
 import { calcularStatusValidade } from '../calculo/calculo.js';
 import type {
-  DecisaoLifecycle,
-  StatusValidade,
+  DecisaoLifecycle  
 } from '../../types/lifecycle.type.js';
+import { StatusValidade } from '../../types/status.type.js';
 
 /**
  * Decide se um registro pode ser encerrado.

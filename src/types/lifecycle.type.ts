@@ -3,7 +3,7 @@
 // Todas as camadas usam esses tipos para decidir.
 // Nenhuma camada inventa um formato novo de resposta.
 
-export type StatusValidade = 'espera' | 'alerta' | 'vencido' | 'encerrado';
+import { StatusValidade } from "./status.type.js";
 
 export type OperacaoLifecycle =
   | 'criacao'

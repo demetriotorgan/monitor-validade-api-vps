@@ -1,11 +1,11 @@
 # Dockerfile do backend Monitor de Validade
 # Repositório: monitor-validade-api
-# Stack: Node.js 22 + TypeScript + Express + MongoDB
+# Stack: Node.js 24 + TypeScript + Express + MongoDB
 
 # -------------------------------
 # Etapa 1: Build
 # -------------------------------
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Define o diretório de trabalho
 WORKDIR /app
@@ -25,7 +25,7 @@ RUN npm run build
 # -------------------------------
 # Etapa 2: Produção
 # -------------------------------
-FROM node:22-alpine
+FROM node:24-alpine
 
 # Cria usuário não-root para rodar a aplicação
 RUN addgroup -g 1001 -S nodejs && \
@@ -48,6 +48,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Expõe a porta da aplicação
 EXPOSE 3001
+
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app/logs
 
 # Muda para o usuário não-root
 USER nodejs

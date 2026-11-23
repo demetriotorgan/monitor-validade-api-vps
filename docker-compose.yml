@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   mongo:
     image: mongo:7
@@ -31,6 +29,28 @@ services:
       MONGODB_URI: ${MONGODB_URI}
       GROQ_API_KEY: ${GROQ_API_KEY}
       # Adicione outras variáveis de ambiente conforme necessário
+    networks:
+      - validade-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: validade-worker
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      MONGODB_URI: ${MONGODB_URI}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      WORKER_LOG_DIR: /app/logs
+      HORA_ENVIO: 6
+      MINUTO_ENVIO: 0
+    command: ["node", "dist/worker/index.js"]
+    volumes:
+      - ./logs:/app/logs
     networks:
       - validade-network
 

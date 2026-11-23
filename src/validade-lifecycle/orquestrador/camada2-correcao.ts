@@ -11,9 +11,9 @@ import { calcularStatusValidade, isStatusValidoParaCorrecao } from '../calculo/c
 import { calcularDiasRestantes } from '../tempo/tempo.js';
 import type {
   DecisaoLifecycle,
-  EntradaCorrecao,
-  StatusValidade,
+  EntradaCorrecao  
 } from '../../types/lifecycle.type.js';
+import { StatusValidade } from '../../types/status.type.js';
 
 /**
  * Decide se uma correção é permitida.

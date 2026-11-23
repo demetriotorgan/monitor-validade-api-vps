@@ -6,7 +6,7 @@
 
 import { subDays, format } from 'date-fns';
 import { normalizarDataValidade, calcularDiasRestantes} from '../tempo/tempo.js'
-import { StatusValidade } from '../../types/validade.types.js';
+import { StatusValidade } from '../../types/status.type.js'; 
 
 /**
  * Calcula o status que um registro DEVERIA ter,
