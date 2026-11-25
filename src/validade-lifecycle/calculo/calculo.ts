@@ -11,12 +11,13 @@ import { StatusValidade } from '../../types/status.type.js';
 /**
  * Calcula o status que um registro DEVERIA ter,
  * com base na data e no alerta, usando o "hoje" da Camada 4.
- * 
+ *
  * Regras congeladas:
- * - diasRestantes <= 0 -> vencido (data == hoje já é vencido)
+ * - Menor que 0 = vencido
+ * -Zero = alerta, é o vence hoje
  * - 0 < diasRestantes <= dias_antecedencia -> alerta
  * - diasRestantes > dias_antecedencia -> espera
- * 
+ *
  * Essa função NÃO sabe o que é "encerrado".
  * Encerrado é decisão da Camada 3, não cálculo.
  * Por isso ela nunca retorna "encerrado".
@@ -27,7 +28,7 @@ export function calcularStatusValidade(
 ): Exclude<StatusValidade, 'encerrado'> {
   const diasRestantes = calcularDiasRestantes(data_iso);
 
-  if (diasRestantes <= 0) {
+  if (diasRestantes < 0) {
     return 'vencido';
   }
 
@@ -36,13 +37,16 @@ export function calcularStatusValidade(
   }
 
   return 'espera';
-}
+};
 
 /**
  * Calcula a partir de que dia o registro entra em alerta.
- * É só data - dias_antecedencia.
+ * É só: data_validade - dias_antecedencia.
  * Usado pelo agente para mostrar no boletim:
  * "Entra em alerta dia X"
+ *
+ * Essa função só calcula a data, não decide status.
+ * A decisão de alerta / espera / vencido é da Função 1.
  */
 export function calcularDataInicioAlerta(
   data_iso: string,
@@ -54,8 +58,9 @@ export function calcularDataInicioAlerta(
 }
 
 /**
- * Calcula quando o registro vai vencer, em dias, para o boletim.
- * É um atalho para não precisar chamar a Camada 4 direto no front.
+ * Calcula em quantos dias o registro vai vencer, para o boletim.
+ * Atalho com nome amigável para o front.
+ * Por dentro usa a Camada 4 (hoje de Brasília).
  */
 export function calcularDiasParaVencer(data_iso: string): number {
   return calcularDiasRestantes(data_iso);

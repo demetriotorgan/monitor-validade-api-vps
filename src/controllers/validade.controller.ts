@@ -14,110 +14,110 @@ import { EntradaCorrecao } from '../types/lifecycle.type.js';
 import { formatarValidadeComStatus } from '../utils/validade.utils.js';
 
 
-export async function salvarValidade(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { data, produto, alerta } = req.body;
+  export async function salvarValidade(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { data, produto, alerta } = req.body;
 
-    // 1. Campos obrigatórios - RF-11 - MANTÉM
-    if (!data?.data_iso || !produto?._id_produto) {
-      throw new ErroEdicao('Os campos "data.data_iso" e "produto._id_produto" são obrigatórios.', 400);
-    }
+      // 1. Campos obrigatórios - RF-11 - MANTÉM
+      if (!data?.data_iso || !produto?._id_produto) {
+        throw new ErroEdicao('Os campos "data.data_iso" e "produto._id_produto" são obrigatórios.', 400);
+      }
 
-    // RF-15: Tem que ser inteiro > 0 - MANTÉM (regra mais restrita que a Camada 1)
-    if (
-      !alerta ||
-      typeof alerta.dias_antecedencia !== 'number' ||
-      !Number.isInteger(alerta.dias_antecedencia) ||
-      alerta.dias_antecedencia <= 0
-    ) {
-      throw new ErroEdicao(
-        'O período de alerta deve ser um número inteiro maior que zero. Ex: 1, 3, 7.',
-        400
+      // RF-15: Tem que ser inteiro > 0 - MANTÉM (regra mais restrita que a Camada 1)
+      if (
+        !alerta ||
+        typeof alerta.dias_antecedencia !== 'number' ||
+        !Number.isInteger(alerta.dias_antecedencia) ||
+        alerta.dias_antecedencia <= 0
+      ) {
+        throw new ErroEdicao(
+          'O período de alerta deve ser um número inteiro maior que zero. Ex: 1, 3, 7.',
+          400
+        );
+      }
+
+      // 2. Valida se o _id é ObjectId válido - MANTÉM
+      const idProduto = String(produto._id_produto);
+      if (!isValidObjectId(idProduto)) {
+        throw new ErroEdicao('ID do produto inválido.', 400);
+      }
+
+      // 3. RF-12: Busca o produto REAL no banco - MANTÉM
+      const produtoReal = await ProdutoModel.findById(idProduto).lean();
+      if (!produtoReal) {
+        throw new ErroEdicao('Produto não encontrado.', 404);
+      }
+
+      // 4. Valida data real - 31/02 não pode passar - MANTÉM
+      const camposData = ['ano', 'mes', 'dia', 'data_iso', 'data_original'] as const;
+      const dataIncompleta = camposData.some((c) => data[c] === undefined || data[c] === null);
+      if (dataIncompleta) {
+        throw new ErroEdicao('Todos os campos de "data" devem ser preenchidos.', 400);
+      }
+
+      // RF-16: Impedir duas validades iguais - MANTÉM, mas sobe para antes da Camada 1
+      // Porque a Camada 1 precisa saber se já existe duplicata
+      const duplicata = await ValidadeModel.findOne({
+        'produto._id_produto': produtoReal._id,
+        'data.data_iso': data.data_iso,
+        validade: { $in: ['espera', 'alerta', 'vencido'] },
+      }).lean();
+
+      // [CAMADA 1] - ÚNICA MUDANÇA REAL
+      // A partir daqui, a decisão de criar vem da Camada 1, não de ifs soltos.
+      // Ela substitui isDataValidadeFutura + calcularStatus + check de duplicata.
+      // Se ela negar, a gente lança o mesmo ErroEdicao de antes, com mesma mensagem.
+      const decisao = podeCriar(
+        {
+          data_iso: data.data_iso,
+          dias_antecedencia: alerta.dias_antecedencia,
+          produto: produtoReal.nome || String(produtoReal._id),
+        },
+        !!duplicata
       );
+
+      if (!decisao.autorizado) {
+        // MODO SOMBRA: descomente a linha abaixo para só logar na primeira semana
+        // console.warn('[CAMADA1-SOMBRA] Divergência:', decisao.codigo, decisao.motivo);
+        // E comente o throw abaixo durante a sombra
+
+        // MODO REAL: lança o erro
+        throw decisaoParaErro(decisao.codigo, decisao.motivo);
+      }
+
+      // A partir daqui, decisao.proximoStatus é 'espera' ou 'alerta'
+      // Nunca é 'vencido', nunca é 'encerrado'
+      const statusValidade = decisao.proximoStatus;
+
+      // 6. Monta o snapshot a partir do BANCO, não do front - MANTÉM
+      const novaValidade = await ValidadeModel.create({
+        data,
+        produto: {
+          _id_produto: produtoReal._id,
+          codigoBarras: produtoReal.codigoBarras,
+          nome: produtoReal.nome,
+        },
+        ml: {},
+        alerta: {
+          dias_antecedencia: alerta.dias_antecedencia,
+        },
+        validade: statusValidade,
+      });
+
+      // RF-19: Formata a resposta - MANTÉM
+      const validadeFormatada = formatarValidadeComStatus(
+        novaValidade.toObject() as IValidade
+      );
+
+      res.status(201).json({
+        sucesso: true,
+        mensagem: 'Validade salva com sucesso.',
+        dados: validadeFormatada,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    // 2. Valida se o _id é ObjectId válido - MANTÉM
-    const idProduto = String(produto._id_produto);
-    if (!isValidObjectId(idProduto)) {
-      throw new ErroEdicao('ID do produto inválido.', 400);
-    }
-
-    // 3. RF-12: Busca o produto REAL no banco - MANTÉM
-    const produtoReal = await ProdutoModel.findById(idProduto).lean();
-    if (!produtoReal) {
-      throw new ErroEdicao('Produto não encontrado.', 404);
-    }
-
-    // 4. Valida data real - 31/02 não pode passar - MANTÉM
-    const camposData = ['ano', 'mes', 'dia', 'data_iso', 'data_original'] as const;
-    const dataIncompleta = camposData.some((c) => data[c] === undefined || data[c] === null);
-    if (dataIncompleta) {
-      throw new ErroEdicao('Todos os campos de "data" devem ser preenchidos.', 400);
-    }
-
-    // RF-16: Impedir duas validades iguais - MANTÉM, mas sobe para antes da Camada 1
-    // Porque a Camada 1 precisa saber se já existe duplicata
-    const duplicata = await ValidadeModel.findOne({
-      'produto._id_produto': produtoReal._id,
-      'data.data_iso': data.data_iso,
-      validade: { $in: ['espera', 'alerta', 'vencido'] },
-    }).lean();
-
-    // [CAMADA 1] - ÚNICA MUDANÇA REAL
-    // A partir daqui, a decisão de criar vem da Camada 1, não de ifs soltos.
-    // Ela substitui isDataValidadeFutura + calcularStatus + check de duplicata.
-    // Se ela negar, a gente lança o mesmo ErroEdicao de antes, com mesma mensagem.
-    const decisao = podeCriar(
-      {
-        data_iso: data.data_iso,
-        dias_antecedencia: alerta.dias_antecedencia,
-        produto: produtoReal.nome || String(produtoReal._id),
-      },
-      !!duplicata
-    );
-
-    if (!decisao.autorizado) {
-      // MODO SOMBRA: descomente a linha abaixo para só logar na primeira semana
-      // console.warn('[CAMADA1-SOMBRA] Divergência:', decisao.codigo, decisao.motivo);
-      // E comente o throw abaixo durante a sombra
-
-      // MODO REAL: lança o erro
-      throw decisaoParaErro(decisao.codigo, decisao.motivo);
-    }
-
-    // A partir daqui, decisao.proximoStatus é 'espera' ou 'alerta'
-    // Nunca é 'vencido', nunca é 'encerrado'
-    const statusValidade = decisao.proximoStatus;
-
-    // 6. Monta o snapshot a partir do BANCO, não do front - MANTÉM
-    const novaValidade = await ValidadeModel.create({
-      data,
-      produto: {
-        _id_produto: produtoReal._id,
-        codigoBarras: produtoReal.codigoBarras,
-        nome: produtoReal.nome,
-      },
-      ml: {},
-      alerta: {
-        dias_antecedencia: alerta.dias_antecedencia,
-      },
-      validade: statusValidade,
-    });
-
-    // RF-19: Formata a resposta - MANTÉM
-    const validadeFormatada = formatarValidadeComStatus(
-      novaValidade.toObject() as IValidade
-    );
-
-    res.status(201).json({
-      sucesso: true,
-      mensagem: 'Validade salva com sucesso.',
-      dados: validadeFormatada,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  };
 
 // src/controllers/validade.encerramento.controller.ts
 // Controller de encerramento - rota dedicada

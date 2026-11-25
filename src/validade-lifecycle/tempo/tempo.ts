@@ -39,12 +39,12 @@ export function normalizarDataValidade(data_iso: string): Date {
 /**
  * Calcula quantos dias faltam para a data.
  * Sempre em dias corridos de calendário.
- * NUNCA usa horas / 24.
- * 
- * Exemplos:
- * hoje 21/11, validade 23/11 -> retorna 2
- * hoje 21/11, validade 21/11 -> retorna 0
- * hoje 21/11, validade 20/11 -> retorna -1
+ * NUNCA usa horas / 24h.
+ *
+ * Exemplos (hoje = 21/11):
+ * validade 23/11 -> retorna 2
+ * validade 21/11 -> retorna 0
+ * validade 20/11 -> retorna -1
  */
 export function calcularDiasRestantes(data_iso: string): number {
   const hoje = obterHojeBrasilia();

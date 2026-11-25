@@ -1,10 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { buscarAlertasPendentes } from "../validade-lifecycle/orquestrador/camada3-alertas.js";
-import { isValidObjectId } from "mongoose";
-import { ValidadeModel } from "../models/Validade.js";
 import { ResultadoListaAlertas } from "../types/status.type.js";
 import { AppError } from "../erros/app-error.js";
-import { calcularStatusValidade } from "../validade-lifecycle/calculo/calculo.js";
 import { confirmarEnvioAlertaService } from "../services/validade.worker.service.js";
 
 //Controller fino: só chama Camada 3, não decide, não filtra no banco.
