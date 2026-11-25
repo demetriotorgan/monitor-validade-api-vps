@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { parseISO, differenceInCalendarDays } from 'date-fns';
+import { parseISO, differenceInCalendarDays, format } from 'date-fns';
 
 import { ValidadeModel } from '../models/Validade.js';
 import { IValidade } from '../types/validade.types.js';
@@ -141,6 +141,47 @@ export async function listarValidadesComStatus(
     next(erro);
   }
 };
+
+//Retorna somente as datas que vencem hoje
+export async function listarValidadesVencemHoje(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const hoje = obterHojeBrasilia();
+    const hojeIso = format(hoje, 'yyyy-MM-dd');
+
+    // Otimização: vence hoje é só data_iso == hoje.
+    // Não precisa buscar tudo e filtrar depois.
+    // Encerrado nunca é vence hoje, então já exclui no banco.
+    const registros = await ValidadeModel
+      .find({
+        'data.data_iso': hojeIso,
+        validade: { $ne: 'encerrado' },
+      })
+      .sort({ _id: -1 })
+      .lean();
+
+    const formatados = registros.map((registro) => {
+      const validadeDoc = registro as unknown as IValidade;
+      const formatada = formatarValidadeComStatus(validadeDoc);
+
+      return {
+        ...formatada,
+        dias_restantes: 0, // vence hoje sempre é 0
+      };
+    });
+
+    res.status(200).json({
+      sucesso: true,
+      dados: formatados,
+    });
+  } catch (erro) {
+    console.error('Erro ao listar validades que vencem hoje:', erro);
+    next(erro);
+  }
+}
 
 //Limpar todos os registro de validade do banco
 export async function limparTodasValidades(req: Request, res: Response): Promise<void> {

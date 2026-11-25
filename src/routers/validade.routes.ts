@@ -4,10 +4,10 @@ import express from 'express'
 import { receberImagem } from '../controllers/multer.controller.js';
 import { processarImagem } from '../controllers/processar.controller.js';
 import { corrigirValidade, deletarValidade, encerrarValidade, listarValidadePorId, salvarValidade } from '../controllers/validade.controller.js';
-import { limparTodasValidades, listarValidadesComStatus } from '../controllers/validade.status.controller.js';
+import { limparTodasValidades, listarValidadesComStatus, listarValidadesVencemHoje } from '../controllers/validade.status.controller.js';
 
 const router = express.Router();
-
+router.get('/vencem-hoje', listarValidadesVencemHoje);
 router.post('/processar', receberImagem,processarImagem);
 
 //-----validade.controller
